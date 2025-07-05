@@ -6,13 +6,13 @@ on:
   pull_request:
     branches: [ main ]
 
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+
       - name: Build Docker image
         run: docker build -t fastapi-app .
 
@@ -23,46 +23,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Build test image
-        run: docker build -t fastapi-app-test
-      - name: Run tests
-        run: docker run fastapi-app-test pytest
+      - name: Run tests inside Docker
+        run: |
+          docker build -t fastapi-app .
+          docker run fastapi-app pytest
+
   deploy:
     runs-on: ubuntu-latest
     needs: test
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Simulated Deployment
-        run: echo "FastAPI app deployed!"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        run: echo "🚀 FastAPI app deployed successfully!"
