@@ -19,14 +19,21 @@ jobs:
   test:
     runs-on: ubuntu-latest
     needs: build
+    strategy:
+      matrix:
+        shard: [1,2,3]
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Run tests inside Docker
-        run: |
-          docker build -t fastapi-app .
-          docker run fastapi-app pytest
+#      - name: Run tests inside Docker @ without martix
+#        run: |
+#          docker build -t fastapi-app .
+#          docker run fastapi-app pytest
+      - name: Build Docker image for testing
+        run: docker build -t fastapi-app .
+      - name: Run tests (shard ${{ matrix.shard }})
+        run: docker run fastapi-app python test_split.py ${{ matrix.shard }} 3
 
   deploy:
     runs-on: ubuntu-latest
@@ -35,3 +42,37 @@ jobs:
     steps:
       - name: Simulated Deployment
         run: echo "🚀 FastAPI app deployed successfully!"
+
+#      - name: Checkout code
+#        uses: actions/checkout@v2
+#      - name: Copy app to EC2
+#        uses: appleboy/scp-action@v0.1.4
+#        with:
+#          host: ${{ secrets.EC2_HOST }}
+#          username: ${{ secrets.EC2_USER }}
+#          key: ${{ secrets.EC2_KEY }}
+#          source: "."
+#          target: "~/fastapi-app"
+#      - name: SSH into EC2 and deploy
+#        uses: appleboy/ssh-action@v1.0.0
+#        with:
+#            host: ${{ secrets.EC2_HOST }}
+#            username: ${{ secrets.EC2_USER }}
+#            key: ${{ secrets.EC2_KEY }}
+#            script: |
+#              cd ~/fastapi-app
+#              docker build -t fastapi-app .
+#              docker stop fastapi-container || true
+#              docker rm fastapi-container || true
+#              docker run -d --name fastapi-container -p 80:8000 fastapi-app
+#
+
+
+
+
+
+
+
+
+
+
