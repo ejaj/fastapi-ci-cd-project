@@ -1,0 +1,76 @@
+- name: Clone repo, build Docker image, and run container
+  hosts: webservers
+  become: yes
+
+  vars:
+    repo_url: https://github.com/example/myapp.git
+    repo_dest: /opt/myapp
+    docker_image_name: myapp:latest
+    container_name: myapp_container
+    container_port: "8080:80" # host container
+
+  tasks:
+    - name: Install git and Docker
+      apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - git
+        - docker.io
+      update_cache: yes
+    - name: Clone the Github repo
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ repo_dest }}"
+      register: git_result
+    - name: Fail if Git clone/pull failed
+      fail:
+        msg: "Failed to clone/pull the Github repository"
+      when: git_result.failed
+
+    - name: Check if the container is running
+      shell: docker ps --filter "name={{ container_name }}" --format "{{ '{{' }}.Names{{ '}}' }}"
+      register: running_container
+      changed_when: false
+      failed_when: false
+    - name: Stop and remove existing container (if running)
+      shell: docker rm -f {{ container_name }}
+      when: running_container.stdout != ""
+      ignore_errors: yes
+    - name: Build Docker image from Docker file
+      command: docker build -t {{ docker_image_name }} {{ repo_dest }}
+      register: build_result
+    - name: Fail if Docker image build failed
+      fail:
+        msg: "Docker image build failed!"
+      when: build_result.rc != 0
+
+    - name: Run Docker container
+      command: >
+        docker run -d
+        --name {{ container_name }}
+        -p {{ container_port }}
+        {{ docker_image_name }}
+      register: run_result
+
+    - name: Fail if Docker container failed to run
+      fail:
+        msg: "Docker container failed to start !"
+      when: run_result.rc != 0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -8,9 +8,15 @@ services:
     # command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     environment:
       - PYTHONPATH=/app
+    volumes:
+      - ./app:/app    # Mount local ./app folder to /app inside the container
   test:
     build: .
     container_name: fastapi-tests
     command: pytest
     environment:
       - PYTHONPATH=/app
+
+#networks:
+#  frontend_net:
+#  backend_net:

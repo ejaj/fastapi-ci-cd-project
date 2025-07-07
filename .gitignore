@@ -394,3 +394,5 @@ data
 Gemfile.lock
 .env
 rag/db
+logs.txt
+minikube-linux-amd64

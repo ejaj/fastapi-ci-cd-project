@@ -1,0 +1,60 @@
+- name: Install NGINX on web server  # play
+  hosts: webservers
+  become: yes
+  tasks: # List of tasks
+    - name: Update apt # task 1
+      apt:
+          update_cache: yes
+    - name: Install nginx
+      apt:
+          name: nginx
+          state: present
+    - name: Start nginx
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+    - name: Copy custom index.html
+      copy:
+        src: index.html  # Local file (on Ansible control machine)
+        dest: /var/www/html/index.html
+        owner: www-data
+        group: www-data
+        mode: '0644'
+    - name: Create /data directory
+      file:
+        path: /data
+        state: directory
+        mode: '0755'
+    - name: List files in /var/www
+      command: ls /var/www
+    - name: Count number of lines in a file
+      shell: cat /var/log/syslog | wc -l
+    - name: Create new user name "developer"
+      user:
+        name: developer
+        shell: /bin/bash
+    - name: Clone a repo
+      git:
+        repo: https://github.com/example/repo.git
+        dest: /opt/myapp
+    - name: Create an empty file like touch
+      file:
+        path: /tmp/myfile.txt
+        state: touch
+
+# ansible-playbook -i hosts.ini install_nginx.hml
+
+
+
+
+
+
+
+
+
+
+
+
+
+
