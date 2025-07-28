@@ -396,3 +396,4 @@ Gemfile.lock
 rag/db
 logs.txt
 minikube-linux-amd64
+mlruns
