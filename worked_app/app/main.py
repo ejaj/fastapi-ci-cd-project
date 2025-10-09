@@ -1,0 +1,137 @@
+from enum import Enum
+from pathlib import Path
+from typing import Optional
+from worked_app.app.database import Base, engine
+
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse, JSONResponse
+
+app = FastAPI(title="FastAPI Worked App")
+
+from routers.items import router as item_router
+
+Base.metadata.create_all(bind=engine)
+
+
+@app.get("/")
+async def root():
+    return {"message": "Hello from fastAPI worker-based app!!"}
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
+@app.get("/hello/{name}")
+async def say_hello(name: str):
+    return {"message": f"Hello, {name}!"}
+
+
+# ─────────────────────────────────────────────────────────────
+# 1) Basic path parameter (no type → string)
+#    /items/foo  → {"item_id": "foo"}
+# ─────────────────────────────────────────────────────────────
+
+@app.get("items/{item_id}")
+async def read_item_free(item_id):
+    return {"item_id": item_id, "type": "str (implicit)"}
+
+
+# ─────────────────────────────────────────────────────────────
+# 2) Path parameter with type (int)
+#    /items-typed/3  → {"item_id": 3}
+#    /items-typed/foo → 422 validation error
+# ─────────────────────────────────────────────────────────────
+@app.get("/items-typed/{item_id}")
+async def read_item_typed(item_id: int):
+    return {"item_id": item_id, "type": "int (validated)"}
+
+
+# ─────────────────────────────────────────────────────────────
+# 3) Order matters
+#    /users/me must come BEFORE /users/{user_id}
+# ─────────────────────────────────────────────────────────────
+@app.get("/users/me")
+async def read_user_me():
+    return {"user_id": "the current user"}
+
+
+@app.get("/users/{user_id}")
+async def read_user(user_id: str):
+    return {"user_id": user_id}
+
+
+# ─────────────────────────────────────────────────────────────
+# 4) Enum-restricted path parameter
+#    Allowed: /models/alexnet, /models/resnet, /models/lenet
+# ─────────────────────────────────────────────────────────────
+class ModelName(str, Enum):
+    alexnet = "alexnet"
+    resnet = "resnet"
+    lenet = "lenet"
+
+
+@app.get("/models/{model_name}")
+async def get_model(model_name: ModelName):
+    if model_name is ModelName.alexnet:
+        return {"model_name": model_name, "message": "Deep Learning FTW!"}
+    if model_name.value == "lenet":
+        return {"model_name": model_name, "message": "LeCNN all the images"}
+    return {"model_name": model_name, "message": "Have some residuals"}
+
+
+# ─────────────────────────────────────────────────────────────
+# 5) Path converter (:path) — can include slashes
+#    /files/home/user/readme.txt → "home/user/readme.txt"
+#    If you need a leading slash, call: /files//home/user/file.txt
+# ─────────────────────────────────────────────────────────────
+
+@app.get("/files/{file_path:path}")
+async def echo_path(file_path: str, require_ext: Optional[bool] = None):
+    """
+    Echo the captured file_path. Optionally enforce an extension:
+      /files/some/path?require_ext=true
+    """
+    if require_ext:
+        if "." not in Path(file_path).name:
+            raise HTTPException(status_code=400, detail="File extension required")
+    return {"file_path": file_path}
+
+
+# ─────────────────────────────────────────────────────────────
+# 6) Optional: real file serving demo (from ./public)
+#    - Put some test file under ./public (e.g., public/readme.txt)
+#    - GET /serve/public/readme.txt
+# ─────────────────────────────────────────────────────────────
+PUBLIC_DIR = Path(__file__).parent / "public"
+PUBLIC_DIR.mkdir(exist_ok=True)
+
+
+@app.get("/serve/{file_path:path}")
+async def serve_file(file_path: str):
+    """
+    Serve a file from the local ./public directory safely.
+    Prevent path traversal and return 404 if not found.
+    """
+    requested = (PUBLIC_DIR / file_path).resolve()
+    if not str(requested).startswith(str(PUBLIC_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="Invalid path")
+
+    if not requested.exists() or not requested.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(requested)
+
+
+# ─────────────────────────────────────────────────────────────
+# 7) Fallback route for /files (exact path) to show behavior
+#    /files → 404 by default; here we make it explicit.
+# ─────────────────────────────────────────────────────────────
+@app.get("/files")
+async def files_root():
+    return JSONResponse(
+        {"message": "Please call /files/{file_path}. Example: /files/docs/readme.txt"}
+    )
+
+
+app.include_router(item_router)
