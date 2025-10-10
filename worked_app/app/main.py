@@ -9,6 +9,11 @@ from fastapi.responses import FileResponse, JSONResponse
 app = FastAPI(title="FastAPI Worked App")
 
 from routers.items import router as item_router
+from routers.query_demo import router as query_demo_router
+from routers.path_demo import router as path_demo_router
+from routers.query_models import router as query_model_router
+from routers.body_params_demo import router as body_params_demo_router
+from routers.body_fields import router as body_field_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -135,3 +140,9 @@ async def files_root():
 
 
 app.include_router(item_router)
+app.include_router(query_demo_router)
+app.include_router(path_demo_router)
+app.include_router(query_model_router)
+app.include_router(query_demo_router)
+app.include_router(body_params_demo_router)
+app.include_router(body_field_router)
