@@ -14,6 +14,10 @@ from routers.path_demo import router as path_demo_router
 from routers.query_models import router as query_model_router
 from routers.body_params_demo import router as body_params_demo_router
 from routers.body_fields import router as body_field_router
+from routers.body_nested import router as body_nested_router
+from routers.body_nested import router as body_nested_nested_router
+from routers.body_extra_data_types import router as body_extra_data_type_router
+from routers.body_request_examples import router as body_request_examples_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -146,3 +150,7 @@ app.include_router(query_model_router)
 app.include_router(query_demo_router)
 app.include_router(body_params_demo_router)
 app.include_router(body_field_router)
+app.include_router(body_nested_router)
+app.include_router(body_request_examples_router)
+app.include_router(body_nested_nested_router)
+app.include_router(body_extra_data_type_router)
