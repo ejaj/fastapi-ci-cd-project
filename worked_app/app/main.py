@@ -18,6 +18,14 @@ from routers.body_nested import router as body_nested_router
 from routers.body_nested import router as body_nested_nested_router
 from routers.body_extra_data_types import router as body_extra_data_type_router
 from routers.body_request_examples import router as body_request_examples_router
+from routers.cookie_params import router as cookie_params_router
+from routers.header_params import router as header_params_router
+from routers.cookie_model_demo import router as cookie_model_demo_router
+from routers.header_model_demo import router as header_model_demo_router
+from routers.response_models_demo import router as response_models_demo_router
+from routers.extra_models_demo import router as extra_models_demo_router
+from routers.status_codes_demo import router as status_codes_demo_router
+from routers.form_data_demo import router as form_data_demo_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -154,3 +162,11 @@ app.include_router(body_nested_router)
 app.include_router(body_request_examples_router)
 app.include_router(body_nested_nested_router)
 app.include_router(body_extra_data_type_router)
+app.include_router(cookie_params_router)
+app.include_router(header_params_router)
+app.include_router(cookie_model_demo_router)
+app.include_router(header_model_demo_router)
+app.include_router(response_models_demo_router)
+app.include_router(extra_models_demo_router)
+app.include_router(status_codes_demo_router)
+app.include_router(form_data_demo_router)

@@ -1,6 +1,6 @@
 # app/models.py
 from sqlalchemy import Column, Integer, String, Float, Enum as SAEnum
-from app.database import Base
+from database import Base
 import enum
 
 
