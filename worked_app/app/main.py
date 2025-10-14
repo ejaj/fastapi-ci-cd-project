@@ -26,6 +26,20 @@ from routers.response_models_demo import router as response_models_demo_router
 from routers.extra_models_demo import router as extra_models_demo_router
 from routers.status_codes_demo import router as status_codes_demo_router
 from routers.form_data_demo import router as form_data_demo_router
+from routers.form_models_demo import router as form_models_demo_router
+from routers.file_uploads import router as form_file_uploads_router
+from routers.forms_and_files import router as forms_and_files_router
+from routers.handle_errors import router as handle_errors_router
+from routers.path_operation_config import router as path_operation_config_router
+from routers.json_encoder import router as json_encoder_router
+from routers.body_update import router as body_update_router
+from routers.dependencies_demo import router as dependencies_demo_router
+from routers.classes_dependencies import router as classes_dependencies_router
+from routers.sub_dependencies import router as sub_dependencies_router
+from routers.dependencies_path_operation import router as dependencies_path_operation_router
+from routers.global_dependencies import router as global_dependencies_router
+from routers.dependencies_with_yield import router as dependencies_with_return_router
+
 
 Base.metadata.create_all(bind=engine)
 
@@ -170,3 +184,16 @@ app.include_router(response_models_demo_router)
 app.include_router(extra_models_demo_router)
 app.include_router(status_codes_demo_router)
 app.include_router(form_data_demo_router)
+app.include_router(form_models_demo_router)
+app.include_router(form_file_uploads_router)
+app.include_router(forms_and_files_router)
+app.include_router(handle_errors_router)
+app.include_router(path_operation_config_router)
+app.include_router(json_encoder_router)
+app.include_router(body_update_router)
+app.include_router(dependencies_demo_router)
+app.include_router(classes_dependencies_router)
+app.include_router(sub_dependencies_router)
+app.include_router(dependencies_path_operation_router)
+app.include_router(global_dependencies_router)
+app.include_router(dependencies_with_return_router)
