@@ -1,12 +1,113 @@
 from enum import Enum
 from pathlib import Path
 from typing import Optional
+from typing import Any
+
+import orjson
+from fastapi.staticfiles import StaticFiles
+
 from worked_app.app.database import Base, engine
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import FastAPI, Request, Response, HTTPException
+from fastapi.responses import (
+    PlainTextResponse,
+    FileResponse,
+    JSONResponse,
+    HTMLResponse,
+    UJSONResponse,
+    RedirectResponse,
+    StreamingResponse,
+    ORJSONResponse
+)
+
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+import time
+import os
+import yaml
 
 app = FastAPI(title="FastAPI Worked App")
+app.mount("/static", StaticFiles(directory="/static"), name="static")
+app.mount("/uploads", StaticFiles(directory="/uploads"), name="uploads")
+
+# Dev: allow a known frontend (React/Vite default dev ports)
+# In production, replace with your exact domains (no '*')
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "https://your-frontend.example.com",
+]
+
+# --------------------------
+# Built-in Middleware
+# --------------------------
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],  # change in prod
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,  # or use allow_origin_regex=r"https://.*\.example\.com"
+    allow_credentials=True,  # needed if you send cookies or Authorization header
+    allow_methods=["*"],  # or ['GET','POST','PUT','DELETE']
+    allow_headers=["*"],  # request headers you’ll accept
+    expose_headers=["X-Process-Time", "X-Request-ID"],  # headers the browser may read
+    max_age=600,  # cache preflight for 10 minutes
+)
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
+# ------------------------------------------------------------------------------
+# Custom middleware
+# ------------------------------------------------------------------------------
+MAINTENANCE = os.getenv("MAINTENANCE", "0") == "1"
+
+
+@app.middleware("http")
+async def maintenance_gate(request: Request, call_next):
+    """
+    If MAINTENANCE=1, block all routes except /health with 503.
+    Declared last -> runs outermost (first on request, last on response).
+    """
+    if MAINTENANCE and request.url.path != "/health":
+        return Response(
+            content='{"detail":"Service under maintenance"}',
+            status_code=503,
+            media_type="application/json",
+            headers={"Retry-After": "120"},
+        )
+    return await call_next(request)
+
+
+@app.middleware("http")
+async def logging_middleware(request: Request, call_next):
+    """
+    Simple request/response logging around every route.
+    """
+    start = time.perf_counter()
+    client = request.client.host if request.client else "unknown"
+    method, path = request.method, request.url.path
+    print(f"{client} {method} {path}")
+    response = await call_next(request)
+    elapsed = time.perf_counter() - start
+    print(f"{method} {path} {response.status_code} in {elapsed:.4f}s")
+    return response
+
+
+@app.middleware("http")
+async def timing_header_middleware(request: Request, call_next):
+    """
+    Adds X-Process-Time header to every response.
+    Declared first -> runs innermost (last on request, first on response).
+    """
+    start = time.perf_counter()
+    response = await call_next(request)
+    response.headers["X-Process-Time"] = f"{time.perf_counter() - start:.6f}"
+    return response
+
 
 from routers.items import router as item_router
 from routers.query_demo import router as query_demo_router
@@ -41,8 +142,15 @@ from routers.global_dependencies import router as global_dependencies_router
 from routers.dependencies_with_yield import router as dependencies_with_return_router
 from routers.auth import router as auth_router
 from routers.auth_2 import router as auth_router2
+from routers.OAuth2_JWT_Argon2 import router as OAuth2_JWT_Argon_router
+from pydantic import BaseModel, ValidationError
 
 Base.metadata.create_all(bind=engine)
+
+
+class Item(BaseModel):
+    name: str
+    tags: list[str]
 
 
 @app.get("/")
@@ -166,6 +274,139 @@ async def files_root():
     )
 
 
+# @app.get("/read_html/", response_class=HTMLResponse)
+# async def read_items():
+#     return """
+#     <html>
+#         <head>
+#             <title>Some HTML in here</title>
+#         </head>
+#         <body>
+#             <h1>Look ma! HTML!</h1>
+#         </body>
+#     </html>
+#     """
+@app.get("/read_html/")
+async def read_items():
+    html_content = """
+    <html>
+        <head>
+            <title>Some HTML in here</title>
+        </head>
+        <body>
+            <h1>Look ma! HTML!</h1>
+        </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content, status_code=200)
+
+
+@app.get("/legacy/")
+def get_legacy_data():
+    data = """<?xml version="1.0"?>
+    <shampoo>
+    <Header>
+        Apply shampoo here.
+    </Header>
+    <Body>
+        You'll have to use soap here.
+    </Body>
+    </shampoo>
+    """
+    return Response(content=data, media_type="application/xml")
+
+
+@app.get("/plain_text", response_class=PlainTextResponse)
+async def main():
+    return "Hello World"
+
+
+@app.get("/redirect_response", response_class=RedirectResponse)
+async def redirect_fastapi():
+    return "https://fastapi.tiangolo.com"
+
+
+@app.get("/pydantic", response_class=RedirectResponse, status_code=302)
+async def redirect_pydantic():
+    return "https://docs.pydantic.dev/"
+
+
+async def fake_video_streamer():
+    for i in range(10):
+        yield b"some fake video bytes"
+
+
+@app.get("/streaming")
+async def main():
+    return StreamingResponse(fake_video_streamer())
+
+
+some_file_path = "large-video-file.mp4"
+
+
+@app.get("/video")
+def main():
+    def iterfile():  # (1)
+        with open(some_file_path, mode="rb") as file_like:  # (2)
+            yield from file_like  # (3)
+
+    return StreamingResponse(iterfile(), media_type="video/mp4")
+
+
+some_file_path = "large-video-file.mp4"
+
+
+@app.get("/file_response", response_class=FileResponse)
+async def main():
+    return some_file_path
+
+
+class CustomORJSONResponse(Response):
+    media_type = "application/json"
+
+    def render(self, content: Any) -> bytes:
+        assert orjson is not None, "orjson must be installed"
+        return orjson.dumps(content, option=orjson.OPT_INDENT_2)
+
+
+@app.get("/", response_class=CustomORJSONResponse)
+async def main():
+    return {"message": "Hello World"}
+
+
+@app.post(
+    "/items/",
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/x-yaml": {
+                    "schema": Item.model_json_schema()
+                }
+            },
+        },
+    },
+)
+@app.get("/ujosnresponse/", response_class=UJSONResponse)
+async def read_items():
+    return [{"item_id": "Foo"}]
+
+
+@app.get("/typer")
+async def redirect_typer():
+    return RedirectResponse("https://typer.tiangolo.com")
+
+
+async def create_item(request: Request):
+    raw = await request.body()
+    try:
+        data = yaml.safe_load(raw)
+        item = Item.model_validate(data)
+    except (yaml.YAMLError, ValidationError):
+        raise HTTPException(status_code=422, detail="Invalid YAML")
+    return item
+
+
 app.include_router(item_router)
 app.include_router(query_demo_router)
 app.include_router(path_demo_router)
@@ -200,3 +441,4 @@ app.include_router(global_dependencies_router)
 app.include_router(dependencies_with_return_router)
 app.include_router(auth_router)
 app.include_router(auth_router2)
+app.include_router(OAuth2_JWT_Argon_router)
