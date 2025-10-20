@@ -39,7 +39,8 @@ from routers.sub_dependencies import router as sub_dependencies_router
 from routers.dependencies_path_operation import router as dependencies_path_operation_router
 from routers.global_dependencies import router as global_dependencies_router
 from routers.dependencies_with_yield import router as dependencies_with_return_router
-
+from routers.auth import router as auth_router
+from routers.auth_2 import router as auth_router2
 
 Base.metadata.create_all(bind=engine)
 
@@ -197,3 +198,5 @@ app.include_router(sub_dependencies_router)
 app.include_router(dependencies_path_operation_router)
 app.include_router(global_dependencies_router)
 app.include_router(dependencies_with_return_router)
+app.include_router(auth_router)
+app.include_router(auth_router2)
